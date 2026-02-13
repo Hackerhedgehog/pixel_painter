@@ -115,14 +115,31 @@ class ToolPanel extends ConsumerWidget {
         onChanged: notifier.setBrushStrokeWidth,
       );
     }
-    if (state.currentTool == ToolType.line ||
-        state.currentTool == ToolType.rectangle ||
-        state.currentTool == ToolType.ellipse) {
+    if (state.currentTool == ToolType.line) {
       return _SizeSelector(
         label: 'Outline',
         value: state.shapeStrokeWidth,
         options: const [2.0, 6.0],
         onChanged: notifier.setShapeStrokeWidth,
+      );
+    }
+    if (state.currentTool == ToolType.rectangle ||
+        state.currentTool == ToolType.ellipse) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _SizeSelector(
+            label: 'Outline',
+            value: state.shapeStrokeWidth,
+            options: const [2.0, 6.0],
+            onChanged: notifier.setShapeStrokeWidth,
+          ),
+          const SizedBox(width: 16),
+          _LockAspectToggle(
+            value: state.lockAspectRatio,
+            onChanged: notifier.setLockAspectRatio,
+          ),
+        ],
       );
     }
     if (state.currentTool == ToolType.spray) {
@@ -354,6 +371,47 @@ class _SizeSelector extends StatelessWidget {
               ),
             )),
       ],
+    );
+  }
+}
+
+class _LockAspectToggle extends StatelessWidget {
+  const _LockAspectToggle({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: value
+          ? Theme.of(context).colorScheme.primaryContainer
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                value ? Icons.lock : Icons.lock_open,
+                size: 20,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '1:1',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

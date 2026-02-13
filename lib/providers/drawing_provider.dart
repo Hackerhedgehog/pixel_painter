@@ -23,6 +23,7 @@ class DrawingState {
     this.brushStrokeWidth = 4,
     this.shapeStrokeWidth = 2,
     this.spraySize = 10,
+    this.lockAspectRatio = false,
     this.previewPoints = const [],
     this.previewStart,
     this.previewEnd,
@@ -35,6 +36,7 @@ class DrawingState {
   final double brushStrokeWidth;
   final double shapeStrokeWidth;
   final double spraySize;
+  final bool lockAspectRatio;
   final List<Offset> previewPoints;
   final Offset? previewStart;
   final Offset? previewEnd;
@@ -47,6 +49,7 @@ class DrawingState {
     double? brushStrokeWidth,
     double? shapeStrokeWidth,
     double? spraySize,
+    bool? lockAspectRatio,
     List<Offset>? previewPoints,
     Offset? previewStart,
     Offset? previewEnd,
@@ -59,6 +62,7 @@ class DrawingState {
       brushStrokeWidth: brushStrokeWidth ?? this.brushStrokeWidth,
       shapeStrokeWidth: shapeStrokeWidth ?? this.shapeStrokeWidth,
       spraySize: spraySize ?? this.spraySize,
+      lockAspectRatio: lockAspectRatio ?? this.lockAspectRatio,
       previewPoints: previewPoints ?? this.previewPoints,
       previewStart: previewStart ?? this.previewStart,
       previewEnd: previewEnd ?? this.previewEnd,
@@ -93,6 +97,24 @@ class DrawingNotifier extends StateNotifier<DrawingState> {
 
   void setSpraySize(double size) {
     state = state.copyWith(spraySize: size);
+  }
+
+  void setLockAspectRatio(bool value) {
+    state = state.copyWith(lockAspectRatio: value);
+  }
+
+  /// Constrains end point so the bounding box is square (for rectangle/ellipse).
+  Offset _constrainToSquare(Offset start, Offset end) {
+    final dx = end.dx - start.dx;
+    final dy = end.dy - start.dy;
+    if (dx == 0 && dy == 0) return end;
+    final size = dx.abs() == 0
+        ? dy.abs()
+        : (dy.abs() == 0 ? dx.abs() : min(dx.abs(), dy.abs()));
+    return Offset(
+      start.dx + (dx >= 0 ? size : -size),
+      start.dy + (dy >= 0 ? size : -size),
+    );
   }
 
   void _pushUndo() {
@@ -145,9 +167,14 @@ class DrawingNotifier extends StateNotifier<DrawingState> {
         state = state.copyWith(previewPoints: points);
         break;
       case ToolType.line:
+        state = state.copyWith(previewEnd: point);
+        break;
       case ToolType.rectangle:
       case ToolType.ellipse:
-        state = state.copyWith(previewEnd: point);
+        final constrained = state.lockAspectRatio && state.previewStart != null
+            ? _constrainToSquare(state.previewStart!, point)
+            : point;
+        state = state.copyWith(previewEnd: constrained);
         break;
       case ToolType.fill:
         break;
@@ -195,9 +222,13 @@ class DrawingNotifier extends StateNotifier<DrawingState> {
         break;
       case ToolType.rectangle:
         if (state.previewStart != null && state.previewEnd != null) {
+          final start = state.previewStart!;
+          final end = state.lockAspectRatio
+              ? _constrainToSquare(start, state.previewEnd!)
+              : state.previewEnd!;
           addAction(RectangleAction(
-            start: state.previewStart!,
-            end: state.previewEnd!,
+            start: start,
+            end: end,
             color: state.currentColor,
             strokeWidth: state.shapeStrokeWidth,
           ));
@@ -205,9 +236,13 @@ class DrawingNotifier extends StateNotifier<DrawingState> {
         break;
       case ToolType.ellipse:
         if (state.previewStart != null && state.previewEnd != null) {
+          final start = state.previewStart!;
+          final end = state.lockAspectRatio
+              ? _constrainToSquare(start, state.previewEnd!)
+              : state.previewEnd!;
           addAction(EllipseAction(
-            start: state.previewStart!,
-            end: state.previewEnd!,
+            start: start,
+            end: end,
             color: state.currentColor,
             strokeWidth: state.shapeStrokeWidth,
           ));
