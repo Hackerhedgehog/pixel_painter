@@ -113,6 +113,55 @@ class DrawingNotifier extends StateNotifier<DrawingState> {
     state = state.copyWith(lockAspectRatio: value);
   }
 
+  /// Unified UI size 1–100 for brush/eraser stroke, shape outline, or spray radius.
+  int get toolSizeDisplayValue {
+    switch (state.currentTool) {
+      case ToolType.brush:
+      case ToolType.eraser:
+        return state.brushStrokeWidth.round().clamp(1, 100);
+      case ToolType.line:
+      case ToolType.rectangle:
+      case ToolType.ellipse:
+        return state.shapeStrokeWidth.round().clamp(1, 100);
+      case ToolType.spray:
+        return _sprayToDisplay(state.spraySize);
+      case ToolType.fill:
+        return 1;
+    }
+  }
+
+  void setToolSizeFromDisplay(int raw) {
+    final v = raw.clamp(1, 100);
+    switch (state.currentTool) {
+      case ToolType.brush:
+      case ToolType.eraser:
+        setBrushStrokeWidth(v.toDouble());
+        break;
+      case ToolType.line:
+      case ToolType.rectangle:
+      case ToolType.ellipse:
+        setShapeStrokeWidth(v.toDouble());
+        break;
+      case ToolType.spray:
+        setSpraySize(_displayToSpray(v));
+        break;
+      case ToolType.fill:
+        break;
+    }
+  }
+
+  static const double _minSpray = 2;
+  static const double _maxSpray = 100;
+
+  int _sprayToDisplay(double spray) {
+    final s = spray.clamp(_minSpray, _maxSpray);
+    return (1 + (s - _minSpray) / (_maxSpray - _minSpray) * 99).round().clamp(1, 100);
+  }
+
+  double _displayToSpray(int display) {
+    return _minSpray + (display - 1) / 99 * (_maxSpray - _minSpray);
+  }
+
   Offset _constrainToSquare(Offset start, Offset end) {
     final dx = end.dx - start.dx;
     final dy = end.dy - start.dy;

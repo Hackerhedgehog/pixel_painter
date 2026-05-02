@@ -36,11 +36,14 @@ class CanvasPainter extends CustomPainter {
       Rect.fromLTWH(0, 0, size.width, size.height),
       Paint()..color = canvasColor,
     );
+    canvas.save();
+    canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
     for (final action in actions) {
       action.paint(canvas, size);
     }
 
     _paintPreview(canvas, size);
+    canvas.restore();
   }
 
   void _paintPreview(Canvas canvas, Size size) {

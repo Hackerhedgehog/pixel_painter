@@ -8,6 +8,7 @@ import 'providers/canvas_settings_provider.dart';
 import 'widgets/drawing_canvas.dart';
 import 'widgets/side_panel.dart';
 import 'widgets/tool_panel.dart';
+import 'widgets/top_tool_bar.dart';
 
 final sidePanelOpenProvider = StateProvider<bool>((ref) => false);
 
@@ -75,6 +76,7 @@ class PaintingPage extends ConsumerWidget {
           Expanded(
             child: Column(
               children: [
+                const TopToolBar(),
                 Expanded(
                   child: _CanvasArea(
                     canvasWidth: canvasSettings.width,

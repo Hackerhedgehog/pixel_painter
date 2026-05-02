@@ -9,6 +9,7 @@ import '../models/tool_type.dart';
 import '../providers/canvas_settings_provider.dart';
 import '../providers/drawing_provider.dart';
 import '../providers/save_provider.dart';
+import '../utils/canvas_bounds.dart';
 import '../utils/flood_fill.dart';
 import 'canvas_painter.dart';
 
@@ -51,7 +52,7 @@ class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
     await save_impl.saveToStorage(byteData.buffer.asUint8List());
   }
 
-  Future<void> _performFill(Offset localPosition) async {
+  Future<void> _performFill(Offset localPosition, Size canvasSize) async {
     if (_isProcessingFill) return;
     _isProcessingFill = true;
 
@@ -61,9 +62,10 @@ class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
       if (boundary == null) return;
 
       final image = await boundary.toImage(pixelRatio: 3.0);
+      final clamped = clampToCanvas(localPosition, canvasSize);
       final filledImage = await floodFill(
         image: image,
-        seedPoint: localPosition * 3.0,
+        seedPoint: clamped * 3.0,
         fillColor: ref.read(drawingProvider).currentColor,
       );
 
@@ -164,7 +166,8 @@ class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
       width: canvasSize.width,
       height: canvasSize.height,
       child: MouseRegion(
-        onHover: (e) => setState(() => _hoverPosition = e.localPosition),
+        onHover: (e) => setState(() => _hoverPosition =
+            clampToCanvas(e.localPosition, canvasSize)),
         onExit: (_) => setState(() => _hoverPosition = null),
         child: Stack(
           children: [
@@ -172,20 +175,23 @@ class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
               onPanStart: (details) {
                 if (widget.isGestureActive) return;
                 if (state.currentTool == ToolType.fill) {
-                  _performFill(details.localPosition);
+                  _performFill(details.localPosition, canvasSize);
                 } else {
-                  notifier.onPanStart(details.localPosition);
+                  final start =
+                      clampToCanvas(details.localPosition, canvasSize);
+                  notifier.onPanStart(start);
                   setState(() {
                     _paintGestureActive = true;
-                    _panPosition = details.localPosition;
+                    _panPosition = start;
                   });
                 }
               },
               onPanUpdate: (details) {
                 if (widget.isGestureActive) return;
                 if (state.currentTool != ToolType.fill) {
-                  notifier.onPanUpdate(details.localPosition);
-                  setState(() => _panPosition = details.localPosition);
+                  final p = clampToCanvas(details.localPosition, canvasSize);
+                  notifier.onPanUpdate(p);
+                  setState(() => _panPosition = p);
                 }
               },
               onPanEnd: (details) {
