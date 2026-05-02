@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img;
 
 /// Performs flood fill on an image and returns the result as a new [ui.Image].
 /// Runs the heavy BFS in a background isolate to avoid freezing the UI.
@@ -108,6 +107,13 @@ Uint8List? _floodFillIsolate(_FloodFillParams p) {
   final seedIndex = p.seedY * p.width + p.seedX;
   queue.add(seedIndex);
   visited[seedIndex] = 1;
+
+  // Fill the seed pixel itself (the BFS only fills neighbors via _tryAdd)
+  final seedPixelIndex = seedIndex * 4;
+  filled[seedPixelIndex]     = p.fillR;
+  filled[seedPixelIndex + 1] = p.fillG;
+  filled[seedPixelIndex + 2] = p.fillB;
+  filled[seedPixelIndex + 3] = p.fillA;
 
   while (queue.isNotEmpty) {
     final index = queue.removeFirst();
@@ -281,22 +287,13 @@ Future<ui.Image> _createImageFromRgbaBytes(
   int width,
   int height,
 ) async {
-  final imgImage = img.Image.fromBytes(
-    width: width,
-    height: height,
-    bytes: bytes.buffer,
-    bytesOffset: 0,
-    numChannels: 4,
-    order: img.ChannelOrder.rgba,
-  );
-  final pngBytes = img.encodePng(imgImage);
-  return _decodeImageFromBytes(pngBytes);
-}
-
-Future<ui.Image> _decodeImageFromBytes(Uint8List bytes) async {
   final completer = Completer<ui.Image>();
-  ui.decodeImageFromList(bytes, (ui.Image image) {
-    if (!completer.isCompleted) completer.complete(image);
-  });
+  ui.decodeImageFromPixels(
+    bytes,
+    width,
+    height,
+    ui.PixelFormat.rgba8888,
+    (image) => completer.complete(image),
+  );
   return completer.future;
 }
