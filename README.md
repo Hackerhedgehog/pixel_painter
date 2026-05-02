@@ -1,149 +1,137 @@
 # Pixel Painter
 
-A Flutter drawing application with a full-featured canvas and tool panel. Create drawings using brushes, shapes, fill, spray, and eraser tools, then save them to local storage or the device gallery.
+A Flutter drawing application with a full-featured canvas and tool panel. Create drawings using brushes, shapes, fill, spray, and eraser tools, then save them as PNG.
 
-## Project Overview
+## Features
 
-Pixel Painter is a cross-platform drawing app built with Flutter. It provides:
-
-- **Canvas** – White drawing surface that maximizes available screen space
-- **Drawing tools** – Brush, line, rectangle, ellipse, fill, spray, and eraser
-- **Color picker** – Choose from predefined colors for strokes and fills
-- **Size options** – Adjustable brush, outline, and spray sizes
-- **Undo** – Revert up to 5 previous actions
-- **Save** – Export drawings as PNG (gallery on mobile, documents on desktop, download on web)
+- **Drawing tools** — Brush, line, rectangle, ellipse, fill (flood fill), spray, and eraser
+- **Color picker** — 20 preset colors
+- **Size control** — Continuous 1–100 slider with numeric input for each tool
+- **Undo / Redo** — Up to 20 steps in each direction
+- **Zoom and pan** — Scroll wheel to zoom, pinch on touch, middle-mouse drag to pan
+- **Canvas size** — Configurable width and height (100–4000 px), default 800 × 600
+- **Clear all** — Erase the canvas with a confirmation prompt
+- **Save** — Export the drawing as PNG (platform-dependent destination)
 
 ### Supported Platforms
 
-- **Android** – Saves to gallery folder `Pictures/PixelPainter`
-- **iOS** – Saves to photo library
-- **Web** – Triggers PNG download
-- **Linux / Windows / macOS** – Saves to app documents directory
+| Platform | Save location |
+|----------|--------------|
+| Android | Gallery — `Pictures/PixelPainter` |
+| iOS | Photo library |
+| Web | Browser download |
+| Linux / Windows / macOS | App documents directory |
 
 ---
 
-## Setup Instructions
-
-You may download and intall the [android APK](https://drive.google.com/file/d/1qc-gIX2ZnsuSKWuyrrnfxgl4OIIr8oEz/view?usp=sharing) or [Linux app](https://drive.google.com/file/d/1OkohhqmuFPAYvrGof6gLHsCT2a0Byz9d/view?usp=sharing). No setup required.
+## Setup
 
 ### Prerequisites
 
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) (3.9.2 or later)
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) 3.9.2 or later
 - Dart SDK 3.9.2 or later
 
 ### Installation
 
-1. **Clone the repository** (or navigate to the project directory):
-
-    ```bash
-    cd pixelPainter
-    ```
-
-2. **Install dependencies**:
-
-    ```bash
-    flutter pub get
-    ```
-
-3. **Run the app**:
-
-    ```bash
-    flutter run
-    ```
-
-    Or specify a device:
-
-    ```bash
-    flutter run -d chrome      # Web
-    flutter run -d linux       # Linux desktop
-    flutter run -d android     # Android device/emulator
-    flutter run -d ios         # iOS simulator (macOS only)
-    ```
-
-### Platform-Specific Configuration
-
-#### Android
-
-The project includes the required permissions in `AndroidManifest.xml`. For Android 10, `requestLegacyExternalStorage` is set to allow gallery access. No extra setup is needed.
-
-#### iOS
-
-Add these keys to `ios/Runner/Info.plist` (already included in this project):
-
-```xml
-<key>NSPhotoLibraryAddUsageDescription</key>
-<string>Pixel Painter needs permission to save your drawings to the photo library.</string>
-<key>NSPhotoLibraryUsageDescription</key>
-<string>Pixel Painter needs permission to save your drawings to the photo library.</string>
+```bash
+flutter pub get
+flutter run
 ```
 
-On first save, iOS will prompt for photo library access.
+Specify a target device:
 
-#### Web
+```bash
+flutter run -d chrome      # Web
+flutter run -d linux       # Linux desktop
+flutter run -d android     # Android device/emulator
+flutter run -d ios         # iOS simulator (macOS only)
+```
 
-No additional configuration. The app uses `package:web` for file downloads.
+### Platform Notes
+
+**Android** — Required permissions are already set in `AndroidManifest.xml`. `requestLegacyExternalStorage` is included for Android 10 gallery access.
+
+**iOS** — `NSPhotoLibraryAddUsageDescription` and `NSPhotoLibraryUsageDescription` are already in `ios/Runner/Info.plist`. iOS will prompt for photo library access on the first save.
+
+**Web** — No extra configuration needed.
 
 ---
 
-## Usage Guide
+## UI Layout
 
-### Tool Panel
+```
+┌─────────────────────────────────────────┐
+│ AppBar  (☰ menu  |  Pixel Painter)      │
+├──────┬──────────────────────────────────┤
+│Side  │ TopToolBar                       │
+│Panel │  undo · redo · color · size      │
+│      ├──────────────────────────────────┤
+│Canvas│                                  │
+│Width │        Drawing Canvas            │
+│Height│    (zoom / pan / draw here)      │
+│      │                                  │
+│Save  ├──────────────────────────────────┤
+│Clear │ ToolPanel  (tool selector)       │
+└──────┴──────────────────────────────────┘
+```
 
-The tool panel at the bottom of the screen contains:
+- **Side panel** — Toggle with the ☰ button. Contains canvas size fields, Save, and Clear All.
+- **Top toolbar** — Undo, Redo, color swatch, and size slider (hidden for Fill tool).
+- **Tool panel** — Bottom row for selecting the active drawing tool.
 
-| Section   | Description                                             |
-| --------- | ------------------------------------------------------- |
-| **Undo**  | Reverts the last action (up to 5 steps)                 |
-| **Save**  | Saves the drawing (platform-dependent destination)      |
-| **Color** | Opens the color picker; tap to choose stroke/fill color |
+---
 
-### Drawing Tools
+## Drawing Tools
 
-1. **Brush** – Freehand drawing
-    - Select Brush, choose color and size (4 or 12)
-    - Draw by dragging on the canvas
+| Tool | How to use |
+|------|-----------|
+| **Brush** | Drag to draw freehand strokes |
+| **Line** | Drag from start to end point |
+| **Rectangle** | Drag to define opposite corners; hold 1:1 to force a square |
+| **Ellipse** | Drag to define bounding box; hold 1:1 to force a circle |
+| **Fill** | Tap to flood-fill all connected pixels of the same color |
+| **Spray** | Drag to airbrush; slower movement = denser coverage |
+| **Eraser** | Drag to erase strokes back to white |
 
-2. **Line** – Straight lines
-    - Select Line, choose color and outline width (2 or 6)
-    - Drag from start to end point
+### Size slider
 
-3. **Rectangle** – Rectangles (including squares)
-    - Select Rect, choose color and outline width
-    - Drag to define opposite corners
+The 1–100 slider in the top toolbar maps to:
 
-4. **Ellipse** – Ellipses (including circles)
-    - Select Ellipse, choose color and outline width
-    - Drag to define the bounding box
+| Tool | What it controls |
+|------|-----------------|
+| Brush, Eraser | Stroke width |
+| Line, Rectangle, Ellipse | Outline width |
+| Spray | Spray radius |
+| Fill | — (no size) |
 
-5. **Fill** – Flood fill
-    - Select Fill, choose color
-    - Tap inside a region to fill it with the selected color
+### Aspect-ratio lock (Rectangle / Ellipse)
 
-6. **Spray** – Airbrush effect
-    - Select Spray, choose color and size (8 or 24)
-    - Drag to spray; more density where you move slowly
+When Rectangle or Ellipse is active, a lock button appears in the top toolbar. Tap it to constrain the shape to a 1:1 ratio (square or circle).
 
-7. **Eraser** – Restore to white
-    - Select Eraser, choose size
-    - Drag to erase (restores canvas default color)
+---
 
-### Size Options
+## Zoom and Pan
 
-When a tool with size options is selected, the panel shows:
+| Action | Gesture |
+|--------|---------|
+| Zoom in / out | Scroll wheel (desktop) or pinch (touch) |
+| Pan | Middle-mouse drag (desktop) or two-finger drag (touch) |
 
-- **Brush size** – For Brush and Eraser (4 or 12)
-- **Outline** – For Line, Rectangle, Ellipse (2 or 6)
-- **Spray size** – For Spray (8 or 24)
+Zoom and pan gestures are independent from drawing. Single-finger drawing still works normally while zoomed in.
 
-### Workflow Tips
+---
 
-- Use **Undo** to correct mistakes (up to 5 actions)
-- Use **Fill** on empty areas to fill the whole canvas
-- Use **Eraser** to remove strokes and restore white
-- **Save** exports the current canvas as a PNG file
+## Keyboard / Mouse Shortcuts
 
-### Saving
+| Action | Shortcut |
+|--------|---------|
+| Undo | Ctrl + Z (via toolbar button) |
+| Redo | Ctrl + Y (via toolbar button) |
 
-- **Mobile (Android/iOS)**: Drawings are saved to the gallery in `Pictures/PixelPainter`
-- **Desktop (Linux, Windows, macOS)**: Drawings are saved to the app documents directory
-- **Web**: A PNG file is downloaded to the browser’s default download location
+---
+
+## Running Tests
+
+```bash
+flutter test
+```
