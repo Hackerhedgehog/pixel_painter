@@ -22,7 +22,10 @@ void main() {
   // gray is exactly 25 units from white on all channels.
   // At tolerance=25 the gray halo must be filled; at tolerance=5 it must not be.
 
-  Future<Uint8List> makeTestImage() async {
+  // Gray at exactly 25 units from white deliberately tests the <= boundary in
+  // _colorsMatch: (255-230).abs() == 25 <= tolerance(25) → true (filled).
+  // Changing _colorsMatch to strict < would break this test, catching regressions.
+  Uint8List makeTestImage() {
     final bytes = Uint8List(3 * 1 * 4);
     // pixel 0 — white (seed)
     bytes[0] = 255; bytes[1] = 255; bytes[2] = 255; bytes[3] = 255;
@@ -34,7 +37,7 @@ void main() {
   }
 
   test('floodFill fills anti-aliased halo pixels when tolerance is 25', () async {
-    final bytes = await makeTestImage();
+    final bytes = makeTestImage();
     final image = await _imageFromBytes(bytes, 3, 1);
 
     final filled = await floodFill(
@@ -60,7 +63,7 @@ void main() {
   });
 
   test('floodFill leaves anti-aliased halo unfilled when tolerance is 5', () async {
-    final bytes = await makeTestImage();
+    final bytes = makeTestImage();
     final image = await _imageFromBytes(bytes, 3, 1);
 
     final filled = await floodFill(
@@ -72,6 +75,10 @@ void main() {
 
     final bd = await filled.toByteData(format: ui.ImageByteFormat.rawStraightRgba);
     final out = bd!.buffer.asUint8List();
+
+    // Verify fill ran (seed pixel must be red)
+    expect(out[0], 255, reason: 'seed pixel R should be red');
+    expect(out[1], 0,   reason: 'seed pixel G should be 0');
 
     // pixel 1 (gray, 25 units from white) must NOT be filled at tolerance 5
     expect(out[4], 230, reason: 'halo pixel R should remain 230 at tolerance 5');
