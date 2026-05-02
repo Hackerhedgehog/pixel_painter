@@ -15,7 +15,9 @@ import 'canvas_painter.dart';
 import '../save_io.dart' if (dart.library.html) '../save_web.dart' as save_impl;
 
 class DrawingCanvas extends ConsumerStatefulWidget {
-  const DrawingCanvas({super.key});
+  const DrawingCanvas({super.key, this.isGestureActive = false});
+
+  final bool isGestureActive;
 
   @override
   ConsumerState<DrawingCanvas> createState() => _DrawingCanvasState();
@@ -78,6 +80,15 @@ class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(saveCallbackProvider.notifier).state = _captureAndSave;
     });
+  }
+
+  @override
+  void didUpdateWidget(DrawingCanvas oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isGestureActive && !oldWidget.isGestureActive) {
+      ref.read(drawingProvider.notifier).clearPreview();
+      setState(() => _panPosition = null);
+    }
   }
 
   Widget _buildCursorIndicator(DrawingState state, Offset position) {
@@ -145,6 +156,7 @@ class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
           children: [
             GestureDetector(
               onPanStart: (details) {
+                if (widget.isGestureActive) return;
                 if (state.currentTool == ToolType.fill) {
                   _performFill(details.localPosition);
                 } else {
@@ -153,23 +165,24 @@ class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
                 }
               },
               onPanUpdate: (details) {
+                if (widget.isGestureActive) return;
                 if (state.currentTool != ToolType.fill) {
                   notifier.onPanUpdate(details.localPosition);
                   setState(() => _panPosition = details.localPosition);
                 }
               },
               onPanEnd: (details) {
+                if (widget.isGestureActive) return;
                 if (state.currentTool != ToolType.fill) {
                   notifier.onPanEnd(canvasSize);
                 }
                 setState(() => _panPosition = null);
               },
               onPanCancel: () {
+                if (widget.isGestureActive) return;
                 notifier.clearPreview();
                 setState(() => _panPosition = null);
               },
-              // RepaintBoundary captures only the drawing content, not the
-              // cursor indicator overlay.
               child: RepaintBoundary(
                 key: _repaintBoundaryKey,
                 child: CustomPaint(
