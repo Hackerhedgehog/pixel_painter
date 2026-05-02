@@ -34,6 +34,11 @@ class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
   /// only while drawing.
   Offset? _panPosition;
 
+  /// True while a draw gesture is in progress (brush, shapes, etc.). Hides the
+  /// brush preview ring: mouse hover stops updating during drag, which would
+  /// otherwise leave the ring stuck at the stroke start.
+  bool _paintGestureActive = false;
+
   Future<void> _captureAndSave() async {
     final boundary = _repaintBoundaryKey.currentContext?.findRenderObject()
         as RenderRepaintBoundary?;
@@ -86,8 +91,15 @@ class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
   void didUpdateWidget(DrawingCanvas oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isGestureActive && !oldWidget.isGestureActive) {
-      ref.read(drawingProvider.notifier).clearPreview();
-      setState(() => _panPosition = null);
+      // Cannot modify Riverpod state during didUpdateWidget — defer until after build.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(drawingProvider.notifier).clearPreview();
+      });
+      setState(() {
+        _panPosition = null;
+        _paintGestureActive = false;
+      });
     }
   }
 
@@ -144,7 +156,9 @@ class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
     // On pointer devices MouseRegion fires, giving a persistent position.
     // On touch-only devices _hoverPosition stays null so we fall back to
     // _panPosition, which is only set during an active gesture.
-    final indicatorPosition = _hoverPosition ?? _panPosition;
+    // Hide the ring while drawing: hover does not track during mouse drag.
+    final indicatorPosition =
+        _paintGestureActive ? null : (_hoverPosition ?? _panPosition);
 
     return SizedBox(
       width: canvasSize.width,
@@ -161,7 +175,10 @@ class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
                   _performFill(details.localPosition);
                 } else {
                   notifier.onPanStart(details.localPosition);
-                  setState(() => _panPosition = details.localPosition);
+                  setState(() {
+                    _paintGestureActive = true;
+                    _panPosition = details.localPosition;
+                  });
                 }
               },
               onPanUpdate: (details) {
@@ -176,12 +193,18 @@ class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
                 if (state.currentTool != ToolType.fill) {
                   notifier.onPanEnd(canvasSize);
                 }
-                setState(() => _panPosition = null);
+                setState(() {
+                  _paintGestureActive = false;
+                  _panPosition = null;
+                });
               },
               onPanCancel: () {
                 if (widget.isGestureActive) return;
                 notifier.clearPreview();
-                setState(() => _panPosition = null);
+                setState(() {
+                  _paintGestureActive = false;
+                  _panPosition = null;
+                });
               },
               child: RepaintBoundary(
                 key: _repaintBoundaryKey,
