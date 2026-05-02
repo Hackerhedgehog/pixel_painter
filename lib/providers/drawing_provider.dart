@@ -7,17 +7,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/draw_action.dart';
 import '../models/tool_type.dart';
 
-/// Maximum undo steps to keep in history.
-const int maxUndoSteps = 5;
+const int maxUndoSteps = 20;
 
-/// Canvas default (background) color.
 const Color canvasColor = Colors.white;
 
-/// Drawing state - actions, tool settings, and preview.
 class DrawingState {
   const DrawingState({
     this.actions = const [],
     this.undoHistory = const [],
+    this.redoHistory = const [],
     this.currentTool = ToolType.brush,
     this.currentColor = Colors.black,
     this.brushStrokeWidth = 4,
@@ -31,6 +29,7 @@ class DrawingState {
 
   final List<DrawAction> actions;
   final List<List<DrawAction>> undoHistory;
+  final List<List<DrawAction>> redoHistory;
   final ToolType currentTool;
   final Color currentColor;
   final double brushStrokeWidth;
@@ -41,12 +40,13 @@ class DrawingState {
   final Offset? previewStart;
   final Offset? previewEnd;
 
-  // Sentinel used so copyWith can distinguish "not provided" from explicit null.
+  // Sentinel so copyWith can distinguish "not provided" from explicit null.
   static const _absent = Object();
 
   DrawingState copyWith({
     List<DrawAction>? actions,
     List<List<DrawAction>>? undoHistory,
+    List<List<DrawAction>>? redoHistory,
     ToolType? currentTool,
     Color? currentColor,
     double? brushStrokeWidth,
@@ -60,6 +60,7 @@ class DrawingState {
     return DrawingState(
       actions: actions ?? this.actions,
       undoHistory: undoHistory ?? this.undoHistory,
+      redoHistory: redoHistory ?? this.redoHistory,
       currentTool: currentTool ?? this.currentTool,
       currentColor: currentColor ?? this.currentColor,
       brushStrokeWidth: brushStrokeWidth ?? this.brushStrokeWidth,
@@ -67,13 +68,14 @@ class DrawingState {
       spraySize: spraySize ?? this.spraySize,
       lockAspectRatio: lockAspectRatio ?? this.lockAspectRatio,
       previewPoints: previewPoints ?? this.previewPoints,
-      previewStart: previewStart == _absent ? this.previewStart : previewStart as Offset?,
-      previewEnd: previewEnd == _absent ? this.previewEnd : previewEnd as Offset?,
+      previewStart:
+          previewStart == _absent ? this.previewStart : previewStart as Offset?,
+      previewEnd:
+          previewEnd == _absent ? this.previewEnd : previewEnd as Offset?,
     );
   }
 }
 
-/// Notifier for drawing state.
 class DrawingNotifier extends StateNotifier<DrawingState> {
   DrawingNotifier() : super(const DrawingState());
 
@@ -89,16 +91,6 @@ class DrawingNotifier extends StateNotifier<DrawingState> {
   void setColor(Color color) {
     state = state.copyWith(
       currentColor: color,
-      previewPoints: [],
-      previewStart: null,
-      previewEnd: null,
-    );
-  }
-
-  void clearAll() {
-    _pushUndo();
-    state = state.copyWith(
-      actions: [],
       previewPoints: [],
       previewStart: null,
       previewEnd: null,
@@ -121,7 +113,6 @@ class DrawingNotifier extends StateNotifier<DrawingState> {
     state = state.copyWith(lockAspectRatio: value);
   }
 
-  /// Constrains end point so the bounding box is square (for rectangle/ellipse).
   Offset _constrainToSquare(Offset start, Offset end) {
     final dx = end.dx - start.dx;
     final dy = end.dy - start.dy;
@@ -149,6 +140,7 @@ class DrawingNotifier extends StateNotifier<DrawingState> {
     _pushUndo();
     state = state.copyWith(
       actions: [...state.actions, action],
+      redoHistory: [],
       previewPoints: [],
       previewStart: null,
       previewEnd: null,
@@ -283,9 +275,29 @@ class DrawingNotifier extends StateNotifier<DrawingState> {
   void undo() {
     if (state.undoHistory.isEmpty) return;
     final previous = state.undoHistory.first;
+    final newRedo = [List<DrawAction>.from(state.actions), ...state.redoHistory]
+        .take(maxUndoSteps)
+        .toList();
     state = state.copyWith(
       actions: previous,
       undoHistory: state.undoHistory.skip(1).toList(),
+      redoHistory: newRedo,
+      previewPoints: [],
+      previewStart: null,
+      previewEnd: null,
+    );
+  }
+
+  void redo() {
+    if (state.redoHistory.isEmpty) return;
+    final next = state.redoHistory.first;
+    final newUndo = [List<DrawAction>.from(state.actions), ...state.undoHistory]
+        .take(maxUndoSteps)
+        .toList();
+    state = state.copyWith(
+      actions: next,
+      undoHistory: newUndo,
+      redoHistory: state.redoHistory.skip(1).toList(),
       previewPoints: [],
       previewStart: null,
       previewEnd: null,
@@ -299,9 +311,19 @@ class DrawingNotifier extends StateNotifier<DrawingState> {
       previewEnd: null,
     );
   }
+
+  void clearAll() {
+    _pushUndo();
+    state = state.copyWith(
+      actions: [],
+      redoHistory: [],
+      previewPoints: [],
+      previewStart: null,
+      previewEnd: null,
+    );
+  }
 }
 
-/// Provider for drawing state.
 final drawingProvider =
     StateNotifierProvider<DrawingNotifier, DrawingState>((ref) {
   return DrawingNotifier();

@@ -1,0 +1,6 @@
+On mobile make it possible to zoom in and out with two finger pinch in and out, when zooming the app should not draw anything.
+For linux desktop make zooming in and out possible with scroll wheele. 
+Panning the canvas must be possible on mobile with moving two fingers. On desktop make it pan while middle mouse button down.
+On the bottom there is a toolbar, there should only be buttons for tools.
+Changing the tool parameters should be on the top. Make a top toolbar too. When selecting the tool on the bottom toolbar, options like selecting the color and thickness of the brush must be in the top bar, for shapes locking the aspect ratio button also be in the top bar.
+Place undo and redo buttons also to the top bar. 

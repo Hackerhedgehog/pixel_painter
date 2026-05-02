@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
@@ -5,15 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/tool_type.dart';
+import '../providers/canvas_settings_provider.dart';
 import '../providers/drawing_provider.dart';
 import '../providers/save_provider.dart';
 import '../utils/flood_fill.dart';
 import 'canvas_painter.dart';
 
-// Conditional imports for platform-specific save
 import '../save_io.dart' if (dart.library.html) '../save_web.dart' as save_impl;
 
-/// The main drawing canvas widget.
 class DrawingCanvas extends ConsumerStatefulWidget {
   const DrawingCanvas({super.key});
 
@@ -24,6 +24,13 @@ class DrawingCanvas extends ConsumerStatefulWidget {
 class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
   final GlobalKey _repaintBoundaryKey = GlobalKey();
   bool _isProcessingFill = false;
+
+  /// Set by MouseRegion on pointer devices — always tracks cursor position.
+  Offset? _hoverPosition;
+
+  /// Set during active pan gesture — used on touch devices to show indicator
+  /// only while drawing.
+  Offset? _panPosition;
 
   Future<void> _captureAndSave() async {
     final boundary = _repaintBoundaryKey.currentContext?.findRenderObject()
@@ -73,53 +80,171 @@ class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
     });
   }
 
+  Widget _buildCursorIndicator(DrawingState state, Offset position) {
+    double radius;
+    bool isEraser;
+
+    switch (state.currentTool) {
+      case ToolType.brush:
+        radius = state.brushStrokeWidth / 2;
+        isEraser = false;
+        break;
+      case ToolType.eraser:
+        // Eraser stroke width is 2× brush width, so indicator matches that.
+        radius = state.brushStrokeWidth;
+        isEraser = true;
+        break;
+      case ToolType.spray:
+        radius = state.spraySize;
+        isEraser = false;
+        break;
+      default:
+        return const SizedBox.shrink();
+    }
+
+    radius = radius.clamp(3.0, 200.0);
+    final diameter = radius * 2;
+
+    return Positioned(
+      left: position.dx - radius,
+      top: position.dy - radius,
+      child: IgnorePointer(
+        child: SizedBox(
+          width: diameter,
+          height: diameter,
+          child: CustomPaint(
+            painter: _CursorIndicatorPainter(
+              color: state.currentColor,
+              dashed: isEraser,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(drawingProvider);
     final notifier = ref.read(drawingProvider.notifier);
+    final canvasSettings = ref.watch(canvasSettingsProvider);
+    final canvasSize = Size(canvasSettings.width, canvasSettings.height);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return GestureDetector(
-          onPanStart: (details) {
-            if (state.currentTool == ToolType.fill) {
-              _performFill(details.localPosition);
-            } else {
-              notifier.onPanStart(details.localPosition);
-            }
-          },
-          onPanUpdate: (details) {
-            if (state.currentTool != ToolType.fill) {
-              notifier.onPanUpdate(details.localPosition);
-            }
-          },
-          onPanEnd: (details) {
-            if (state.currentTool != ToolType.fill) {
-              notifier.onPanEnd(constraints.biggest);
-            }
-          },
-          onPanCancel: () {
-            notifier.clearPreview();
-          },
-          child: RepaintBoundary(
-            key: _repaintBoundaryKey,
-            child: CustomPaint(
-              painter: CanvasPainter(
-                actions: state.actions,
-                previewPoints: state.previewPoints,
-                previewStart: state.previewStart,
-                previewEnd: state.previewEnd,
-                currentTool: state.currentTool,
-                currentColor: state.currentColor,
-                brushStrokeWidth: state.brushStrokeWidth,
-                shapeStrokeWidth: state.shapeStrokeWidth,
-                spraySize: state.spraySize,
+    // On pointer devices MouseRegion fires, giving a persistent position.
+    // On touch-only devices _hoverPosition stays null so we fall back to
+    // _panPosition, which is only set during an active gesture.
+    final indicatorPosition = _hoverPosition ?? _panPosition;
+
+    return SizedBox(
+      width: canvasSize.width,
+      height: canvasSize.height,
+      child: MouseRegion(
+        onHover: (e) => setState(() => _hoverPosition = e.localPosition),
+        onExit: (_) => setState(() => _hoverPosition = null),
+        child: Stack(
+          children: [
+            GestureDetector(
+              onPanStart: (details) {
+                if (state.currentTool == ToolType.fill) {
+                  _performFill(details.localPosition);
+                } else {
+                  notifier.onPanStart(details.localPosition);
+                  setState(() => _panPosition = details.localPosition);
+                }
+              },
+              onPanUpdate: (details) {
+                if (state.currentTool != ToolType.fill) {
+                  notifier.onPanUpdate(details.localPosition);
+                  setState(() => _panPosition = details.localPosition);
+                }
+              },
+              onPanEnd: (details) {
+                if (state.currentTool != ToolType.fill) {
+                  notifier.onPanEnd(canvasSize);
+                }
+                setState(() => _panPosition = null);
+              },
+              onPanCancel: () {
+                notifier.clearPreview();
+                setState(() => _panPosition = null);
+              },
+              // RepaintBoundary captures only the drawing content, not the
+              // cursor indicator overlay.
+              child: RepaintBoundary(
+                key: _repaintBoundaryKey,
+                child: CustomPaint(
+                  painter: CanvasPainter(
+                    actions: state.actions,
+                    previewPoints: state.previewPoints,
+                    previewStart: state.previewStart,
+                    previewEnd: state.previewEnd,
+                    currentTool: state.currentTool,
+                    currentColor: state.currentColor,
+                    brushStrokeWidth: state.brushStrokeWidth,
+                    shapeStrokeWidth: state.shapeStrokeWidth,
+                    spraySize: state.spraySize,
+                  ),
+                  size: canvasSize,
+                ),
               ),
-              size: constraints.biggest,
             ),
-          ),
-        );
-      },
+            if (indicatorPosition != null)
+              _buildCursorIndicator(state, indicatorPosition),
+          ],
+        ),
+      ),
     );
   }
+}
+
+/// Draws a circle outline with a thin contrasting outer ring for visibility
+/// on any background color.
+class _CursorIndicatorPainter extends CustomPainter {
+  const _CursorIndicatorPainter({required this.color, required this.dashed});
+
+  final Color color;
+  final bool dashed;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    // Outer contrast ring so the indicator is always visible.
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.4)
+        ..strokeWidth = 3.0
+        ..style = PaintingStyle.stroke
+        ..isAntiAlias = true,
+    );
+
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke
+      ..isAntiAlias = true;
+
+    if (dashed) {
+      const dashCount = 16;
+      const dashAngle = 2 * pi / dashCount;
+      for (var i = 0; i < dashCount; i += 2) {
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          i * dashAngle,
+          dashAngle,
+          false,
+          paint,
+        );
+      }
+    } else {
+      canvas.drawCircle(center, radius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CursorIndicatorPainter old) =>
+      old.color != color || old.dashed != dashed;
 }

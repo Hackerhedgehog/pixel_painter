@@ -1,11 +1,9 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/tool_type.dart';
 import '../providers/drawing_provider.dart';
-import '../providers/save_provider.dart';
 
 /// Tool selection and settings panel.
 class ToolPanel extends ConsumerWidget {
@@ -36,11 +34,7 @@ class ToolPanel extends ConsumerWidget {
           children: [
             _ToolRow(
               children: [
-                _UndoSaveRow(
-                  notifier: notifier,
-                  state: state,
-                  onSave: ref.read(saveCallbackProvider),
-                ),
+                _UndoRedoRow(notifier: notifier, state: state),
                 const Spacer(),
                 _ColorButton(
                   color: state.currentColor,
@@ -107,7 +101,8 @@ class ToolPanel extends ConsumerWidget {
   }
 
   Widget _buildSizeSelector(DrawingState state, DrawingNotifier notifier) {
-    if (state.currentTool == ToolType.brush || state.currentTool == ToolType.eraser) {
+    if (state.currentTool == ToolType.brush ||
+        state.currentTool == ToolType.eraser) {
       return _SizeSelector(
         label: 'Brush size',
         value: state.brushStrokeWidth,
@@ -214,16 +209,11 @@ class _ToolRow extends StatelessWidget {
   }
 }
 
-class _UndoSaveRow extends StatelessWidget {
-  const _UndoSaveRow({
-    required this.notifier,
-    required this.state,
-    required this.onSave,
-  });
+class _UndoRedoRow extends StatelessWidget {
+  const _UndoRedoRow({required this.notifier, required this.state});
 
   final DrawingNotifier notifier;
   final DrawingState state;
-  final Future<void> Function()? onSave;
 
   @override
   Widget build(BuildContext context) {
@@ -232,54 +222,13 @@ class _UndoSaveRow extends StatelessWidget {
       children: [
         IconButton(
           icon: const Icon(Icons.undo),
-          onPressed: state.undoHistory.isEmpty
-              ? null
-              : () => notifier.undo(),
+          onPressed: state.undoHistory.isEmpty ? null : notifier.undo,
           tooltip: 'Undo',
         ),
         IconButton(
-          icon: const Icon(Icons.save),
-          onPressed: onSave == null
-              ? null
-              : () async {
-                  await onSave!();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          kIsWeb
-                              ? 'Drawing downloaded'
-                              : 'Drawing saved',
-                        ),
-                      ),
-                    );
-                  }
-                },
-          tooltip: 'Save',
-        ),
-        IconButton(
-          icon: const Icon(Icons.delete_outline),
-          onPressed: () async {
-            final confirmed = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Clear canvas?'),
-                content: const Text('This will erase everything. You can undo afterwards.'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Cancel'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    child: const Text('Clear'),
-                  ),
-                ],
-              ),
-            );
-            if (confirmed == true) notifier.clearAll();
-          },
-          tooltip: 'Clear all',
+          icon: const Icon(Icons.redo),
+          onPressed: state.redoHistory.isEmpty ? null : notifier.redo,
+          tooltip: 'Redo',
         ),
       ],
     );
@@ -287,10 +236,7 @@ class _UndoSaveRow extends StatelessWidget {
 }
 
 class _ColorButton extends StatelessWidget {
-  const _ColorButton({
-    required this.color,
-    required this.onTap,
-  });
+  const _ColorButton({required this.color, required this.onTap});
 
   final Color color;
   final VoidCallback onTap;
@@ -400,10 +346,7 @@ class _SizeSelector extends StatelessWidget {
 }
 
 class _LockAspectToggle extends StatelessWidget {
-  const _LockAspectToggle({
-    required this.value,
-    required this.onChanged,
-  });
+  const _LockAspectToggle({required this.value, required this.onChanged});
 
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -423,15 +366,9 @@ class _LockAspectToggle extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                value ? Icons.lock : Icons.lock_open,
-                size: 20,
-              ),
+              Icon(value ? Icons.lock : Icons.lock_open, size: 20),
               const SizedBox(width: 4),
-              Text(
-                '1:1',
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
+              Text('1:1', style: Theme.of(context).textTheme.labelSmall),
             ],
           ),
         ),
