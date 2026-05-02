@@ -2,12 +2,6 @@
   "configVersion": 2,
   "packages": [
     {
-      "name": "archive",
-      "rootUri": "file:///home/stenerikmatt/.pub-cache/hosted/pub.dev/archive-4.0.7",
-      "packageUri": "lib/",
-      "languageVersion": "3.0"
-    },
-    {
       "name": "async",
       "rootUri": "file:///home/stenerikmatt/.pub-cache/hosted/pub.dev/async-2.13.0",
       "packageUri": "lib/",
@@ -102,12 +96,6 @@
       "rootUri": "file:///home/stenerikmatt/Develop/flutter/packages/flutter_web_plugins",
       "packageUri": "lib/",
       "languageVersion": "3.8"
-    },
-    {
-      "name": "image",
-      "rootUri": "file:///home/stenerikmatt/.pub-cache/hosted/pub.dev/image-4.7.2",
-      "packageUri": "lib/",
-      "languageVersion": "3.0"
     },
     {
       "name": "leak_tracker",
@@ -236,12 +224,6 @@
       "languageVersion": "2.12"
     },
     {
-      "name": "petitparser",
-      "rootUri": "file:///home/stenerikmatt/.pub-cache/hosted/pub.dev/petitparser-7.0.1",
-      "packageUri": "lib/",
-      "languageVersion": "3.8"
-    },
-    {
       "name": "platform",
       "rootUri": "file:///home/stenerikmatt/.pub-cache/hosted/pub.dev/platform-3.1.6",
       "packageUri": "lib/",
@@ -250,12 +232,6 @@
     {
       "name": "plugin_platform_interface",
       "rootUri": "file:///home/stenerikmatt/.pub-cache/hosted/pub.dev/plugin_platform_interface-2.1.8",
-      "packageUri": "lib/",
-      "languageVersion": "3.0"
-    },
-    {
-      "name": "posix",
-      "rootUri": "file:///home/stenerikmatt/.pub-cache/hosted/pub.dev/posix-6.0.3",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -354,12 +330,6 @@
       "rootUri": "file:///home/stenerikmatt/.pub-cache/hosted/pub.dev/xdg_directories-1.1.0",
       "packageUri": "lib/",
       "languageVersion": "3.3"
-    },
-    {
-      "name": "xml",
-      "rootUri": "file:///home/stenerikmatt/.pub-cache/hosted/pub.dev/xml-6.6.1",
-      "packageUri": "lib/",
-      "languageVersion": "3.8"
     },
     {
       "name": "pixel_painter",
