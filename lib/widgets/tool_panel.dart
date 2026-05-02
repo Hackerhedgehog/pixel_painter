@@ -257,6 +257,30 @@ class _UndoSaveRow extends StatelessWidget {
                 },
           tooltip: 'Save',
         ),
+        IconButton(
+          icon: const Icon(Icons.delete_outline),
+          onPressed: () async {
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Clear canvas?'),
+                content: const Text('This will erase everything. You can undo afterwards.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Clear'),
+                  ),
+                ],
+              ),
+            );
+            if (confirmed == true) notifier.clearAll();
+          },
+          tooltip: 'Clear all',
+        ),
       ],
     );
   }

@@ -41,6 +41,9 @@ class DrawingState {
   final Offset? previewStart;
   final Offset? previewEnd;
 
+  // Sentinel used so copyWith can distinguish "not provided" from explicit null.
+  static const _absent = Object();
+
   DrawingState copyWith({
     List<DrawAction>? actions,
     List<List<DrawAction>>? undoHistory,
@@ -51,8 +54,8 @@ class DrawingState {
     double? spraySize,
     bool? lockAspectRatio,
     List<Offset>? previewPoints,
-    Offset? previewStart,
-    Offset? previewEnd,
+    Object? previewStart = _absent,
+    Object? previewEnd = _absent,
   }) {
     return DrawingState(
       actions: actions ?? this.actions,
@@ -64,8 +67,8 @@ class DrawingState {
       spraySize: spraySize ?? this.spraySize,
       lockAspectRatio: lockAspectRatio ?? this.lockAspectRatio,
       previewPoints: previewPoints ?? this.previewPoints,
-      previewStart: previewStart ?? this.previewStart,
-      previewEnd: previewEnd ?? this.previewEnd,
+      previewStart: previewStart == _absent ? this.previewStart : previewStart as Offset?,
+      previewEnd: previewEnd == _absent ? this.previewEnd : previewEnd as Offset?,
     );
   }
 }
@@ -84,7 +87,22 @@ class DrawingNotifier extends StateNotifier<DrawingState> {
   }
 
   void setColor(Color color) {
-    state = state.copyWith(currentColor: color);
+    state = state.copyWith(
+      currentColor: color,
+      previewPoints: [],
+      previewStart: null,
+      previewEnd: null,
+    );
+  }
+
+  void clearAll() {
+    _pushUndo();
+    state = state.copyWith(
+      actions: [],
+      previewPoints: [],
+      previewStart: null,
+      previewEnd: null,
+    );
   }
 
   void setBrushStrokeWidth(double width) {
