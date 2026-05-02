@@ -61,12 +61,13 @@ class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
           as RenderRepaintBoundary?;
       if (boundary == null) return;
 
-      final image = await boundary.toImage(pixelRatio: 3.0);
+      final image = await boundary.toImage(pixelRatio: 1.0);
       final clamped = clampToCanvas(localPosition, canvasSize);
       final filledImage = await floodFill(
         image: image,
-        seedPoint: clamped * 3.0,
+        seedPoint: clamped,
         fillColor: ref.read(drawingProvider).currentColor,
+        tolerance: 25,
       );
 
       if (mounted) {
