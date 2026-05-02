@@ -173,6 +173,12 @@ class _DrawingCanvasState extends ConsumerState<DrawingCanvas> {
         child: Stack(
           children: [
             GestureDetector(
+              onTapDown: (details) {
+                if (widget.isGestureActive) return;
+                if (state.currentTool == ToolType.fill) {
+                  _performFill(details.localPosition, canvasSize);
+                }
+              },
               onPanStart: (details) {
                 if (widget.isGestureActive) return;
                 if (state.currentTool == ToolType.fill) {
